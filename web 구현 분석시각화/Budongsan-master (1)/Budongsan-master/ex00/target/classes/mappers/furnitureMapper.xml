@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.zerock.mapper.furnitureMapper">
+
+	<!-- 게시판 리스트 : select -->
+	<select id="list" resultType="FurnitureDTO">
+		select *
+		from(
+			select rownum rnum, id, title, cpn, writeDate, hit
+			from (
+				select id, title, cpn, writeDate, hit
+				from furniturelist
+				where id > 0
+				<include refid="search"></include>
+				order by id desc
+			)
+		)
+		where rnum between #{startRow} and #{endRow}
+	</select>
+	
+		<select id="listimg" resultType="FurnitureDTO">
+		select *
+		from(
+			select rownum rnum, id, title, picture, cpn, writeDate, hit
+			from (
+				select id, title, picture, cpn, writeDate, hit
+				from furniturelist
+				where id > 0
+				<include refid="search"></include>
+				order by id desc
+			)
+		)
+		where rnum between #{startRow} and #{endRow}
+	</select>
+	
+	<select id="commentlist" resultType="Furniture_CommentDTO">
+	select userid, writedate, comments 
+	from furniture_comments 
+	where furnitureid = #{id} and comments is not null
+	order by no desc
+	</select>
+	
+	
+	<!-- 게시판 글보기 : select =>view, update form -->
+<!-- 	<select id="view" resultType="org.zerock.board.dto.BoardDTO"> -->
+	<select id="view" resultType="FurnitureDTO">
+		select id, title, writeDate, hit,makecp,content,model_id,price,counts,cpn,UUID
+		from furniturelist
+		where id = #{id}
+		
+	</select>
+	
+	<!-- 게시판 글보기 1증가 : update -->
+	<update id="increase">
+		update furniturelist set hit = hit + 1
+		where id = #{id}
+	</update>
+	
+	<!-- 게시판 글쓰기 : insert -->
+	<insert id="insert">
+		insert into furniturelist(id, picture, title, makecp, content, model_id, price, UUID, counts,cpn)
+		values(FurnitureID.nextval, #{picture,jdbcType=LONGVARBINARY} ,#{title},
+		#{makecp} , #{content}, #{model_id}, #{price}, #{UUID}, #{counts} ,#{cpn})
+	</insert>
+	
+	<!-- 게시판 글수정 처리 : update -->
+	<update id="update">
+		update FURNITURELIST 
+		set title = #{title}, cpn = #{cpn}, makecp = #{makecp}, content = #{content}, model_id = #{model_id},
+		price = #{price}, counts = #{counts}
+		where id = #{id}
+	</update>
+
+	<!-- 게시판 글삭제 처리 : delete -->
+	<delete id="delete">
+		delete from furniturelist
+		where id = #{id}
+	</delete>
+	
+	<!-- 전체 데이터의 갯수를 세는 처리 -->
+	<select id="totalCount" resultType="Integer">
+		select count(*) from furniturelist
+		where id > 0
+		<include refid="search"></include>
+	</select>
+	
+<!-- 	저장을 위한 시퀀스의 값을 가져오기 -->
+	<select id="titleid" resultType="Integer">
+	 select id from furniturelist
+	 	where UUID = #{UUID}
+	</select>
+	
+	<!-- 	삭제를 위한 시퀀스의 값을 가져오기 -->
+	<select id="titleName" resultType="String">
+	 select title from furniturelist
+	 	where id = #{id}  
+	</select>
+	
+	
+	<!-- 검색을 위한 조건 처리문 : list, totalCount에서 각각 사용한다. -->
+	<sql id="search">
+		<if test="searchType != null">
+			<if test="searchType == 't'.toString()">
+				and ( title like '%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'c'.toString()">
+				and ( content like '%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'w'.toString()">
+				and ( writer like '%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'tc'.toString()">
+				and ( title like '%' || #{keyword} || '%'
+				or content like '%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'cw'.toString()">
+				and ( content like '%' || #{keyword} || '%'
+				or writer like '%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'tcw'.toString()">
+				and ( title like '%' || #{keyword} || '%'
+				or content like '%' || #{keyword} || '%'
+				or writer like '%' || #{keyword} || '%' )
+			</if>
+		</if>
+	</sql>
+	
+<!-- 	<insert id="insertComment"> -->
+<!-- 	insert into furniture_comments(no, assessment, userid, comments, writedate,furnitureid ) -->
+<!-- 		values(furniture_comment_seq.nextval, #{assessment} ,#{userid}, -->
+<!-- 		#{comments} ,sysdate, #{furnitureid}) -->
+<!-- 	</insert> -->
+	
+	<update id="insertComment">
+	update furniture_comments 
+	set comments = #{comments}, writedate = sysdate
+	where userid = #{userid} and furnitureid = #{furnitureid} and comments is null
+	</update>
+	
+	<insert id="BuyProcess">
+	insert into furniture_comments(no,userid, furnitureid,buys)
+		values(furniture_comment_seq.nextval, #{userid}, #{furnitureid},1)
+	</insert>
+	
+	<update id="BuyProcess2">
+	update B_MEMBER 
+		set  MONEY = MONEY -(select price from FURNITURELIST 
+		where id = #{furnitureid}) 
+		where email = #{userid}
+	</update>
+	
+	<update id="BuyProcess3">
+	update FURNITURELIST 
+		set  COUNTS = COUNTS - 1
+		where id = #{furnitureid}
+	</update>
+	
+	<update id="BuyProcess4">
+		update B_MEMBER 
+			set  MONEY = MONEY + (select price from FURNITURELIST 
+		where id = #{furnitureid}) 
+		where email = #{cpn}
+	</update>
+	
+	
+	
+</mapper>

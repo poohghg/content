@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="org.zerock.mapper.MemberMapper">
+
+<!-- 로그인시 로그인한 데이터 모두를 dto 객체에 넘겨준다. -->
+<select id="login" resultType="LoginDTO">
+	SELECT * FROM b_member WHERE email = #{email}
+</select>
+
+<!-- 회원가입 쿼리  -->
+<insert id="join" >
+	INSERT INTO b_member(email, pw, name, hp, addr, age, money, seller_name, grade)
+	VALUES(#{email}, #{pw}, #{name}, #{hp}, #{addr}, #{age}, 0, #{seller_name}, #{grade})
+</insert>
+
+<!-- 이메일 중복 확인 쿼리. 정보가 없으면 Null을 반환  -->
+<select id="checkEmail" resultType="String">
+	SELECT email FROM b_member WHERE email = #{email}
+</select>
+
+<!-- 회원가입시 이메일 인증을 할때 사용할 AuthCode를 DB에 저장해준다. -->
+<update id="createAuthKey">
+	UPDATE b_member SET user_authCode = #{user_authCode} WHERE email = #{email}
+</update>
+
+<!-- 이메일을 인증했을 때 '이미 인증한 회원'임을 유저Auth상태에 1을 셋팅해 알려준다. 최초 가입시 디폴트값은 0 -->
+<update id="userAuth">
+	UPDATE b_member SET user_authStatus = '1' WHERE email = #{email}
+</update>
+
+<!-- 유저의 인증상태가 어떠한지 전달해주는 쿼리문  -->
+<select id="selectUserAuth" resultType="String">
+	SELECT user_authStatus FROM b_member WHERE email = #{email}
+</select>
+
+<!-- 암호화되어서 저장된 비밀번호를 전달해주는 쿼리문  -->
+<select id="selectCryptPw" resultType="String">
+	SELECT pw FROM b_member WHERE email = #{email}
+</select>
+
+<!-- 아이디 찾기시 아이디를 넘겨주는 쿼리 -->
+<select id="searchId" resultType="String">
+	SELECT email FROM b_member WHERE hp = #{newHp} AND name = #{name} AND age = #{age}
+</select>
+
+<!-- 새로운 비밀번호를 발급받았을 때 암호화된 비밀번호를 DB에 저장해주는 쿼리문  -->
+<update id="setPw">
+	UPDATE b_member SET pw = #{pw} WHERE email = #{email}
+</update>
+
+<!-- 로그인 상태를 1로 만들어주는 쿼리. 1==true로 사용된다. -->
+<update id="setLoginTrue">
+	UPDATE b_member SET login = 1 WHERE email = #{email}
+</update>
+
+<!-- 로그인 상태를 0으로 만들어주는 쿼리. 0==false로 사용된다. -->
+<update id="setLoginFalse">
+	UPDATE b_member SET login = 0 WHERE email = #{email}
+</update>
+
+<!-- 로그인 상태를 반환해주는 쿼리 -->
+<select id="getLogin" resultType="Integer">
+	SELECT login FROM b_member WHERE email = #{email}
+</select>
+
+<!--회원 게시판 리스트 : select -->
+<select id="list" resultType="LoginDTO">
+		select *
+		from(
+			select rownum rnum, name, email, age, addr, grade, money, seller_name
+			from (
+				select name, email, age, addr, grade, money, seller_name
+				from b_member
+				
+			) order by rnum desc
+		)
+		where rnum between #{startRow} and #{endRow}
+</select>
+
+<!-- 로그인시 로그인한 데이터 모두를 dto 객체에 넘겨준다. -->
+<select id="view" resultType="LoginDTO">
+	SELECT name, email, age, addr, grade, seller_name, money FROM b_member WHERE email = #{email}
+</select>
+
+<!-- dto 객체를 받아와 회원정보를 수정하는 쿼리. 관리자 페이지에서 사용-->
+<update id="update">
+	UPDATE b_member SET name = #{name}, age = #{age}, addr = #{addr}, 
+	seller_name = #{seller_name}, grade = #{grade}, money= money + #{money} WHERE email = #{email}
+</update>
+
+<!-- dto 받아와 회원 탈퇴를 구현하는 쿼리 -->
+<update id="secession">
+	DELETE FROM b_member WHERE email = #{email}
+</update>
+
+<!-- dto 객체를 받아와 회원정보를 수정하는 쿼리. 개인 회원 정보 수정페이지에서 사용-->
+<update id="modify">
+	UPDATE b_member SET name = #{name}, age = #{age}, addr = #{addr}, 
+	money= money + #{money} WHERE email = #{email}
+</update>
+
+</mapper>

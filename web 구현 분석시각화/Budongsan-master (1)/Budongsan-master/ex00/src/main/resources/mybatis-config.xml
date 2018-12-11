@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-config.dtd">
+
+<configuration>
+
+	<typeAliases>
+		<typeAlias alias="LoginDTO" type="org.zerock.member.dto.LoginDTO" />
+		<typeAlias alias="FurnitureDTO"	type="org.zerock.furniture.dto.FurnitureDTO" />
+		<typeAlias alias="Furniture_CommentDTO"	type="org.zerock.furniture.dto.Furniture_CommentDTO" />
+		<typeAlias alias="boardDTO" type="org.zerock.agentboard.dto.AgentDTO"/>
+		<typeAlias alias="fileDTO" type="org.zerock.agentboard.dto.FileDTO"/>
+		<typeAlias alias="NewsDTO" type="com.budongsan.news.dto.NewsDTO"/>
+		<package name="org.zerock.agentboard.dto"/>
+	</typeAliases>
+	
+
+</configuration>

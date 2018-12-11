@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.budongsan.mapper.NewsMapper">
+
+
+	<!-- 게시판 리스트 : select -->
+	<select id="list" resultType="NewsDTO">
+		select *
+		from(
+		select rownum rnum , no ,title, writer,writeDate,hit
+		from (
+		select  no,title, writer,writeDate, hit
+		from news
+		where no > 0
+		<include refid="search"></include>
+		order by no asc
+		)
+		)
+		where rnum between #{startRow} and #{endRow}
+		<!-- select * -->
+		<!-- from( -->
+		<!-- select rownum rnum, no, title, writer,writeDate,hit -->
+		<!-- from ( -->
+		<!-- select no, title, writer,writeDate, hit -->
+		<!-- from news -->
+		<!-- WHERE ROWID IN(SELECT MIN(ROWID) FROM news GROUP BY title) -->
+		<!-- <include refid="search"></include> -->
+		<!-- order by no desc -->
+		<!-- ) -->
+		<!-- ) -->
+		<!-- where rnum between #{startRow} and #{endRow} -->
+	</select>
+
+
+	<!-- 전체 데이터의 갯수를 세는 처리 -->
+	<select id="totalCount" resultType="Integer">
+		select count(*) from news
+		where no > 0
+		<include refid="search"></include>
+	</select>
+
+	<!-- <select id="view" resultType="org.zerock.board.dto.BoardDTO"> -->
+	<select id="view" resultType="NewsDTO">
+		select no, title, img,content, writer
+		,writeDate ,hit
+		from news
+		where no = #{no}
+	</select>
+
+	<!-- 게시판 글보기 1증가 : update -->
+	<update id="increase">
+		update news set hit = hit + 1
+		where no = #{no}
+	</update>
+
+	
+	<delete id="delete">
+		DELETE FROM news
+		WHERE no IN (
+		SELECT a.no AS no
+		FROM
+		news A INNER JOIN ( SELECT MIN(no) AS no, title, count(*) AS
+		loginCount FROM news
+		GROUP BY title HAVING count(*) >1) B
+		ON A.title =
+		B.title and A.no != B.no)
+	</delete>
+	<!-- 검색을 위한 조건 처리문 : list, totalCount에서 각각 사용한다. -->
+	<sql id="search">
+		<if test="searchType != null">
+			<if test="searchType == 't'.toString()">
+				and ( title like '%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'c'.toString()">
+				and ( content like '%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'w'.toString()">
+				and ( writer like '%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'tc'.toString()">
+				and ( title like '%' || #{keyword} || '%'
+				or content like
+				'%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'cw'.toString()">
+				and ( content like '%' || #{keyword} || '%'
+				or writer like
+				'%' || #{keyword} || '%' )
+			</if>
+			<if test="searchType == 'tcw'.toString()">
+				and ( title like '%' || #{keyword} || '%'
+				or content like
+				'%' || #{keyword} || '%'
+				or writer like '%' || #{keyword} || '%' )
+			</if>
+		</if>
+	</sql>
+
+	<!-- 글쓰기 -->
+	<insert id="craw">
+		<!-- insert into news(no,title,content,writer,writeDate) -->
+		<!-- select news_seq.nextval,#{title},#{content},#{writer},#{writeDate} 
+			from news -->
+		<!-- where not exists (select * from news where title=#{title} and writer=#{writer}) -->
+		insert into news(no, title,content ,writer,writeDate,img)
+		values(news_seq.nextval, #{title}, #{content}, #{writer},#{writeDate},#{img})
+		
+
+	</insert>
+</mapper>
