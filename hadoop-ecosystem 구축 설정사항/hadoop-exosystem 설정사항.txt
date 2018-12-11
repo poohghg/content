@@ -1,0 +1,161 @@
+﻿Ambari-Server Install on CentOS 7
+
+	1. 네트워크 설정
+		- [root@localhost ~]# cd /etc/sysconfig/network-scripts
+		- [root@localhost network-scripts]# vi ifcfg-enp0s3
+		- [root@localhost network-scripts]# systemctl restart network.service
+		- [root@localhost network-scripts]# vi ifcfg-enp0s8
+		- [root@localhost network-scripts]# systemctl restart network.service
+		
+	2. Host명 변경
+		- [root@localhost ~]# hostnamectl set-hostname [변경할 host명]
+			ex) hostnamectl set-hostname namenode.hadoop.com)
+		- [root@localhost ~]# reboot
+			변경된 host명을 시스템에 적용하기 위해 재부팅 시행
+		
+	3. Host명 및 Fully Qualified Domain Name (FQDN) 설정
+		- [root@Host명 ~]# vi /etc/hosts
+			- hosts 파일의 최상단에 위치한 두 줄은 절대 건들지 마십시요.
+			- 고정ip와 변경한 Host명 등록
+192.168.103.112 namenode1.hadoop.com namenode 
+192.168.103.113 datanode.hadoop.com datanode 
+192.168.103.114 datanode1.hadoop.com datanode1 
+192.168.103.116 datanode2.hadoop.com datanode2 
+		
+	4. 방화벽 install 및 해제
+		- [root@Host명 ~]# yum install firewalld
+		- [root@Host명 ~]# systemctl stop firewalld
+		- [root@Host명 ~]# systemctl disable firewalld
+		
+	5. SSH 키 생성
+		- [root@Host명 ~]# ssh-keygen
+		- [root@Host명 ~]# cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+		
+			필요 시
+			- [root@Host명 ~]# chmod 700 ~/.ssh
+			- [root@Host명 ~]# chmod 600 ~/.ssh/authorized_keys
+		
+		** 만약 id_rsa.pub 파일을 authroized_key 파일로 복사 생성할 경우 **
+			[root@Host명 ~]# vi /etc/ssh/sshd_config
+				AuthorizedKeysFile             .ssh/authorized_keys를 주석처리하고
+				AuthorizedKeysFile             .ssh/authorized_key를 새로 추가하고 저장 후 종료
+				
+			[root@Host명 ~]# systemctl restart sshd.service
+				sshd_config 파일 재시작한 후 필요하면 가상머신 reboot도 진행
+
+
+      - [root@Host명 ~]# cat ~/.ssh/id_rsa.pub | ssh root@namenode.hadoop.com 'cat >> ~/.ssh/authorized_keys'
+      - [root@Host명 ~]# cat ~/.ssh/id_rsa.pub | ssh root@datanode.hadoop.com 'cat >> ~/.ssh/authorized_keys'
+      - [root@Host명 ~]# cat ~/.ssh/id_rsa.pub | ssh root@datanode02.hadoop.com 'cat >> ~/.ssh/authorized_keys'
+		       cat ~/.ssh/id_rsa.pub | ssh root@datanode01.hadoop.com 'cat >> ~/.ssh/authorized_keys'
+			
+			-권한주기
+			- [root@Host명 ~]# chmod 700 ~/.ssh
+			- [root@Host명 ~]# chmod 600 ~/.ssh/authorized_keys
+	
+	6. hugepage 편집
+		- [root@Host명 ~]# vi /etc/rc.local
+			아래 내용 추가
+			
+if test -f /sys/kernel/mm/transparent_hugepage/enabled; then
+/bin/echo never > /sys/kernel/mm/transparent_hugepage/enabled
+fi
+if test -f /sys/kernel/mm/transparent_hugepage/defrag; then
+/bin/echo never > /sys/kernel/mm/transparent_hugepage/defrag
+fia
+	
+	7. Priorities 다운로드
+		- [root@Host명 ~]# yum install yum-priorities
+	
+	8. SELinux 비활성화
+		- [root@Host명 ~]# vi /etc/selinux/config
+			SELINUX=enforcing -> SELINUX=disabled
+		
+	9. 스와핑 빈도 줄이기
+		- [root@Host명 ~]# vi /etc/sysctl.conf
+# Decrease swap usage to a reasonable level
+vm.swappiness=10 (<- 추가)
+			
+	10. 그냥 세팅
+		- [root@Host명 ~]# vi /etc/security/limits.conf
+			아래 내용을 기본적으로 주석들 되어 있는 곳 아래에 작성
+		
+root soft nofile 65536
+root hard nofile 65536
+* soft nofile 65536
+* hard nofile 65536
+root soft nofile 32768
+root hard nofile 32768
+* soft nofile 32768
+* hard nofile 32768
+			
+	11. Ambari.repo 다운로드
+		- [root@Host명 ~]# wget -nv http://public-repo-1.hortonworks.com/ambari/centos7/2.x/updates/2.6.1.0/ambari.repo -O /etc/yum.repos.d/ambari.repo
+			그리고 HDP 버전은 Ambari 실행 후 HDP 선택 시 2.6.5 버전을 사용할 예정 (sandbox에서 작성된 내용으로 기준을 본다면 ambari 2.6.1.0에서 HDP 2.6.5를 사용한다고 나와있음)
+			
+			* 버전은 본인 선택에 의해 변경하실 수 있습니다. 꼭 위 버전을 하실 필요는 없습니다.
+		
+		아래 내용은 필요 시 실행
+		- #[root@Host명 ~]# vi /etc/yum/pluginconf.d/priorities.conf
+			#[main]
+			#enabled=1
+			#gpgcheck=0 (<- 추가)
+			
+	12. Ambari-server 다운로드
+		- [root@Host명 ~]# yum install ambari-server
+	
+	13. mysql connector
+		- [root@Host명 ~]# yum install mysql-connector-java
+		- [root@Host명 ~]# ambari-server setup --jdbc-db=mysql --jdbc-driver=/usr/share/java/mysql-connector-java.jar 
+	
+	13. Ambari-server 설정
+		- [root@Host명 ~]# ambari-server setup
+	
+	14. Ambari-agent 다운로드
+		- [root@Host명 ~]# yum install ambari-agent
+	
+	15. Ambari-agent 설정 (master, slave 모두 설치 | namenode는 server, agent 모두 실행, datanode는 agent만 실행)
+		- [root@Host명 ~]# vi /etc/ambari-agent/conf/ambari-agent.ini
+			
+			아래 내용은 namenode와 datanode 모두에서 실행
+			다음 내용 추가 및 수정
+			hostname = localhost -> hostname = master의 host명 (master, slave 모두 동일하게 적용)
+				ex) hostname=namenode.hadoop.com
+			
+			[securty]
+			ssl_verify_cert=0
+			force_https_protocol=PROTOCOL_TLSv1_2
+		
+		- [root@Host명 ~]# vi /etc/python/cert-verification.cfg
+			[https]
+			'verify=platform_defualt' 주석 처리 한 후
+			'verify=disable'를 추가
+				
+	16. Host 간 시간 동기화 (namenode와 datanode 모두 적용)
+		- [root@Host명 ~]# yum remove chrony
+			chrony 삭제
+		- [root@Host명 ~]# yum install ntp
+			ntp 설치
+		- [root@Host명 ~]# systemctl stop ntpd
+			ntpd 정지
+		- [root@Host명 ~]# vi /etc/ntp.conf 
+			server ~~~~ ibrust 있는 부분 모두 주석 처리한 후
+			
+			아래 내용 추가 (모든 host에 namenode의 ip주소를 입력해야 함)
+			server namenode의ip주소 iburst
+				ex) server 192.168.xxx.xxx iburst
+			
+		- [root@Host명 ~]# systemctl start ntpd
+		- [root@Host명 ~]# ntpd -p
+			동기화 주소가 제대로 입력되고 실행되는지 확인
+		
+	17. 가상 머신에 포트 포워딩
+		namenode의 가상 머신에만 포트 포워딩
+		
+	18. Windows에서 hosts 파일 수정
+		-  메모장을 관리자 권한으로 실행한 후 Windows의 hosts 파일 (C:\Windows\System32\drivers\etc\hosts)에 ambari-server의 고정ip와 host명 등록
+			ex) 192.168.xxx.xxx namenode.hadoop.com
+			ex) 192.168.xxx.xxx datanode1.hadoop.com
+	
+	19. Ambari-server start
+	
